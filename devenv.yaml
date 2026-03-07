@@ -1,0 +1,8 @@
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
+  agents-instructions-builder:
+    url: github:Alb-O/agents-instructions-builder
+    flake: false
+imports:
+  - agents-instructions-builder
