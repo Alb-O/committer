@@ -1,7 +1,6 @@
 { pkgs, lib, ... }:
 
 let
-  committerAgentsText = builtins.readFile ./AGENTS.md;
   committer = pkgs.writeShellApplication {
     name = "committer";
     runtimeInputs = [
@@ -19,7 +18,7 @@ in
   };
 
   config = {
-    instructions.fragments = lib.mkBefore [ committerAgentsText ];
+    instructions.fragments = lib.mkBefore [ (builtins.readFile ./AGENTS.md) ];
 
     packages = [ committer ];
 
