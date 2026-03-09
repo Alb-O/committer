@@ -1,4 +1,4 @@
-# Git Committer
+# Agent Committer
 
 `committer` helper script packaged via `devenv`.
 
