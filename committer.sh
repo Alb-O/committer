@@ -68,4 +68,34 @@ fi
 if ((${#add_files[@]} > 0)); then
   git -C "$repo_path" add -A -- "${add_files[@]}"
 fi
-git -C "$repo_path" commit --only -m "$msg" -- "${files[@]}"
+
+hook_files=()
+while IFS= read -r path; do
+  [[ -n "$path" ]] && hook_files+=("$path")
+done < <(
+  git -C "$repo_path" diff --cached --name-only --diff-filter=ACMRTUXB -- "${files[@]}"
+)
+
+# `git commit --only` runs hooks against a locked temporary next-index, which
+# breaks fixup-style hooks that restage files (for example treefmt wrappers that
+# call `git add`). Run pre-commit eagerly against the selected staged files, let
+# those hooks update the real index, then disable hook re-entry for the actual
+# commit step.
+if ((${#hook_files[@]} > 0)); then
+  if command -v prek >/dev/null 2>&1; then
+    (
+      cd "$repo_path"
+      prek run --stage pre-commit --files "${hook_files[@]}"
+    )
+  elif command -v pre-commit >/dev/null 2>&1; then
+    (
+      cd "$repo_path"
+      pre-commit run --hook-stage pre-commit --files "${hook_files[@]}"
+    )
+  else
+    echo $'error: neither `prek` nor `pre-commit` is available on PATH' >&2
+    exit 1
+  fi
+fi
+
+git -C "$repo_path" commit --only --no-verify -m "$msg" -- "${files[@]}"

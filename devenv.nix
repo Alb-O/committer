@@ -6,6 +6,7 @@ let
     runtimeInputs = [
       pkgs.git
       pkgs.gnugrep
+      pkgs.prek
     ];
     text = builtins.readFile ./committer.sh;
   };
