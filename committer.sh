@@ -42,6 +42,14 @@ for pattern in "$@"; do
     continue
   fi
 
+  # Quoted globs should target new untracked files. Preserve the
+  # glob pathspec so `git add -A` can stage them.
+  if git -C "$repo_path" ls-files --others --exclude-standard -- "$pathspec" | grep -q .; then
+    files+=("$pathspec")
+    add_files+=("$pathspec")
+    continue
+  fi
+
   # Deleted tracked paths are valid selections too; `git ls-files` lets the
   # caller target them even though the path no longer exists on disk.
   if git -C "$repo_path" ls-files --error-unmatch -- "$pathspec" >/dev/null 2>&1; then
