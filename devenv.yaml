@@ -1,6 +1,6 @@
 inputs:
   nixpkgs:
-    url: github:cachix/devenv-nixpkgs/rolling
+    url: github:NixOS/nixpkgs/nixpkgs-unstable
   dvnv-local-inputs:
     url: github:Alb-O/dvnv-local-inputs
     flake: false
