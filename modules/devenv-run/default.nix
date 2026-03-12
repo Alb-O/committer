@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, options, ... }:
 
 let
   devenvRun = pkgs.writeShellApplication {
@@ -13,11 +13,14 @@ let
   };
 in
 {
-  config = {
-    instructions.instructions = lib.mkOrder 300 [ (builtins.readFile ./AGENTS.md) ];
+  config = lib.mkMerge [
+    {
+      packages = [ devenvRun ];
 
-    packages = [ devenvRun ];
-
-    outputs.devenv-run = devenvRun;
-  };
+      outputs.devenv-run = devenvRun;
+    }
+    (lib.optionalAttrs (options ? instructions && options.instructions ? instructions) {
+      instructions.instructions = lib.mkOrder 300 [ (builtins.readFile ./AGENTS.md) ];
+    })
+  ];
 }

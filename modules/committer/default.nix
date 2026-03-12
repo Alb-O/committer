@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, options, ... }:
 
 let
   committer = pkgs.writeShellApplication {
@@ -12,11 +12,14 @@ let
   };
 in
 {
-  config = {
-    instructions.instructions = lib.mkOrder 200 [ (builtins.readFile ./AGENTS.md) ];
+  config = lib.mkMerge [
+    {
+      packages = [ committer ];
 
-    packages = [ committer ];
-
-    outputs.committer = committer;
-  };
+      outputs.committer = committer;
+    }
+    (lib.optionalAttrs (options ? instructions && options.instructions ? instructions) {
+      instructions.instructions = lib.mkOrder 200 [ (builtins.readFile ./AGENTS.md) ];
+    })
+  ];
 }
