@@ -1,0 +1,4 @@
+interface:
+  display_name: "Committer"
+  short_description: "Fast and atomic commit with auto-formatting hook"
+  default_prompt: "Commit the overall work for this session (not just the most recent edits from latest response)"
