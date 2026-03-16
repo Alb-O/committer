@@ -22,6 +22,7 @@ pre_commit_config="$repo_root/.pre-commit-config.yaml"
 
 files=()
 initial_add_files=()
+initial_delete_files=()
 retry_add_files=()
 for pattern in "$@"; do
   # Normalize shell globs into git pathspec globs so the same selection logic
@@ -56,13 +57,13 @@ for pattern in "$@"; do
   # Deleted tracked paths are valid selections too; `git ls-files` lets the
   # caller target them even though the path no longer exists on disk.
   #
-  # Stage them once up front, but do not include them in later retry restages.
-  # After the first `git add -A`, Git no longer treats the missing literal
-  # pathspec as matchable, so replaying it during hook-retry loops would fail
-  # with "pathspec did not match any files".
+  # Stage them once up front via `git rm --cached`, but do not include them in
+  # later retry restages. `git add -A` rejects ignored pathspecs even when the
+  # tracked file has been deleted, which breaks selected deletions once a path
+  # has become ignored.
   if git -C "$repo_path" ls-files --error-unmatch -- "$pathspec" >/dev/null 2>&1; then
     files+=("$pathspec")
-    initial_add_files+=("$pathspec")
+    initial_delete_files+=("$pathspec")
     continue
   fi
 
@@ -87,6 +88,10 @@ fi
 # `git add -A` calls fail.
 if ((${#initial_add_files[@]} > 0)); then
   git -C "$repo_path" add -A -- "${initial_add_files[@]}"
+fi
+
+if ((${#initial_delete_files[@]} > 0)); then
+  git -C "$repo_path" rm -r --cached --ignore-unmatch -- "${initial_delete_files[@]}"
 fi
 
 hook_files=()
