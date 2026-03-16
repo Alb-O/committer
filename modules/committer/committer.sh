@@ -28,7 +28,9 @@ for pattern in "$@"; do
   # Normalize shell globs into git pathspec globs so the same selection logic
   # works whether the caller passes a literal file or a pattern.
   pathspec=$pattern
+  pattern_is_glob=false
   if [[ "$pattern" == *[\*\?\[]* ]]; then
+    pattern_is_glob=true
     pathspec=":(glob)$pattern"
   fi
 
@@ -48,6 +50,16 @@ for pattern in "$@"; do
   # Quoted globs should target new untracked files. Preserve the
   # glob pathspec so `git add -A` can stage them.
   if git -C "$repo_path" ls-files --others --exclude-standard -- "$pathspec" | grep -q .; then
+    files+=("$pathspec")
+    initial_add_files+=("$pathspec")
+    retry_add_files+=("$pathspec")
+    continue
+  fi
+
+  # Globs that match tracked paths should stay on the `git add -A` path. A
+  # literal `-e` check cannot see through a glob, so without this branch they
+  # get misclassified as deletions and staged through `git rm --cached`.
+  if $pattern_is_glob && git -C "$repo_path" ls-files --cached -- "$pathspec" | grep -q .; then
     files+=("$pathspec")
     initial_add_files+=("$pathspec")
     retry_add_files+=("$pathspec")
@@ -91,7 +103,7 @@ if ((${#initial_add_files[@]} > 0)); then
 fi
 
 if ((${#initial_delete_files[@]} > 0)); then
-  git -C "$repo_path" rm -r --cached --ignore-unmatch -- "${initial_delete_files[@]}"
+  git -C "$repo_path" rm -q -r --cached --ignore-unmatch -- "${initial_delete_files[@]}"
 fi
 
 hook_files=()
