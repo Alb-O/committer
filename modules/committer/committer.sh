@@ -47,19 +47,37 @@ for pattern in "$@"; do
     continue
   fi
 
+  # Globs that match tracked paths need one more split: if any matched file
+  # still exists in the worktree, use `git add -A` so content changes and
+  # deletions refresh together. If all matches are already gone, expand the
+  # glob to concrete tracked paths and treat it as a deletion-only selection so
+  # later git commands do not see a dead directory glob.
+  if $pattern_is_glob; then
+    mapfile -t tracked_glob_matches < <(git -C "$repo_path" ls-files --cached -- "$pathspec")
+    if ((${#tracked_glob_matches[@]} > 0)); then
+      tracked_glob_has_live_match=false
+      for tracked_path in "${tracked_glob_matches[@]}"; do
+        if [[ -e "$repo_root/$tracked_path" ]]; then
+          tracked_glob_has_live_match=true
+          break
+        fi
+      done
+
+      if $tracked_glob_has_live_match; then
+        files+=("$pathspec")
+        initial_add_files+=("$pathspec")
+        retry_add_files+=("$pathspec")
+      else
+        files+=("${tracked_glob_matches[@]}")
+        initial_delete_files+=("${tracked_glob_matches[@]}")
+      fi
+      continue
+    fi
+  fi
+
   # Quoted globs should target new untracked files. Preserve the
   # glob pathspec so `git add -A` can stage them.
   if git -C "$repo_path" ls-files --others --exclude-standard -- "$pathspec" | grep -q .; then
-    files+=("$pathspec")
-    initial_add_files+=("$pathspec")
-    retry_add_files+=("$pathspec")
-    continue
-  fi
-
-  # Globs that match tracked paths should stay on the `git add -A` path. A
-  # literal `-e` check cannot see through a glob, so without this branch they
-  # get misclassified as deletions and staged through `git rm --cached`.
-  if $pattern_is_glob && git -C "$repo_path" ls-files --cached -- "$pathspec" | grep -q .; then
     files+=("$pathspec")
     initial_add_files+=("$pathspec")
     retry_add_files+=("$pathspec")
