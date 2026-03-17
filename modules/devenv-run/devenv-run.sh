@@ -10,6 +10,24 @@ the repo's shellHook / enterShell tasks.
 EOF
 }
 
+find_poly_local_inputs_bootstrap() {
+  local search_dir=$1
+
+  while true; do
+    if [[ -x "$search_dir/repos/poly-local-inputs/bootstrap-local-inputs" ]]; then
+      printf '%s\n' "$search_dir/repos/poly-local-inputs/bootstrap-local-inputs"
+      return 0
+    fi
+
+    local parent
+    parent=$(dirname "$search_dir")
+    if [[ "$parent" == "$search_dir" ]]; then
+      return 1
+    fi
+    search_dir=$parent
+  done
+}
+
 latest_shell_export() {
   find .devenv -maxdepth 1 -type f -name 'shell-*.sh' -printf '%T@ %p\n' 2>/dev/null |
     sort -nr |
@@ -49,10 +67,16 @@ if [[ $# -eq 0 ]]; then
 fi
 
 cd "$repo_root"
+repo_root=$(pwd)
 
 if [[ ! -f devenv.nix || ! -f devenv.yaml ]]; then
   echo "Not a devenv repo root: $repo_root" >&2
   exit 1
+fi
+
+if bootstrap_script=$(find_poly_local_inputs_bootstrap "$repo_root"); then
+  polyrepo_root=$(dirname "$(dirname "$(dirname "$bootstrap_script")")")
+  "$bootstrap_script" "$repo_root" --polyrepo-root "$polyrepo_root" --repo-dirs-path repos
 fi
 
 # Reuse the repo's generated shell export if it already exists. This avoids
