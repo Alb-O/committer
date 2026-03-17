@@ -14,8 +14,8 @@ find_poly_local_inputs_bootstrap() {
   local search_dir=$1
 
   while true; do
-    if [[ -x "$search_dir/repos/poly-local-inputs/bootstrap-local-inputs" ]]; then
-      printf '%s\n' "$search_dir/repos/poly-local-inputs/bootstrap-local-inputs"
+    if [[ -x "$search_dir/repos/poly-bootstrap/bootstrap" ]]; then
+      printf '%s\n' "$search_dir/repos/poly-bootstrap/bootstrap"
       return 0
     fi
 
