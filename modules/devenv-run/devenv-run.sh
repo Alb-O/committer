@@ -11,12 +11,12 @@ it may materialize a shell export so later runs can stay side-effect-light.
 EOF
 }
 
-find_poly_local_inputs_bootstrap() {
+find_polyrepo_direnvrc() {
   local search_dir=$1
 
   while true; do
-    if [[ -x "$search_dir/repos/poly-bootstrap/bootstrap" ]]; then
-      printf '%s\n' "$search_dir/repos/poly-bootstrap/bootstrap"
+    if [[ -f "$search_dir/.polyrepo-direnvrc" ]]; then
+      printf '%s\n' "$search_dir/.polyrepo-direnvrc"
       return 0
     fi
 
@@ -95,9 +95,10 @@ if [[ ! -f devenv.nix || ! -f devenv.yaml ]]; then
   exit 1
 fi
 
-if bootstrap_script=$(find_poly_local_inputs_bootstrap "$repo_root"); then
-  polyrepo_root=$(dirname "$(dirname "$(dirname "$bootstrap_script")")")
-  "$bootstrap_script" "$repo_root" --polyrepo-root "$polyrepo_root"
+if direnvrc_path=$(find_polyrepo_direnvrc "$repo_root"); then
+  # shellcheck disable=SC1090
+  source "$direnvrc_path"
+  polyrepo_bootstrap_repo "$repo_root"
 fi
 
 # Reuse the repo's generated shell export if it already exists. This avoids
