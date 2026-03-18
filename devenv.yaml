@@ -1,8 +1,3 @@
 inputs:
   nixpkgs:
     url: github:NixOS/nixpkgs/nixpkgs-unstable
-  poly-bootstrap:
-    url: github:Alb-O/poly-bootstrap
-    flake: false
-imports:
-  - poly-bootstrap
