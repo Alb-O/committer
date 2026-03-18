@@ -3,10 +3,11 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: devenv-run [-C repo_root] [--] <command> [args...]
+Usage: devenv-run [-C repo_root] [--shell '<command>'] [--] <command> [args...]
 
 Run a command inside a repo's generated devenv environment without executing
-the repo's shellHook / enterShell tasks.
+the repo's shellHook / enterShell tasks during steady-state reuse. On first use,
+it may materialize a shell export so later runs can stay side-effect-light.
 EOF
 }
 
@@ -35,7 +36,14 @@ latest_shell_export() {
     cut -d' ' -f2-
 }
 
+materialize_shell_export() {
+  # A real `devenv shell` run is the reliable way to produce `.devenv/shell-*`.
+  # We only do this on the cold path, then later runs can reuse the export.
+  devenv shell --no-tui -- bash -lc 'true' >/dev/null
+}
+
 repo_root=$(pwd)
+shell_command=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -45,6 +53,14 @@ while [[ $# -gt 0 ]]; do
         exit 2
       fi
       repo_root=$2
+      shift 2
+      ;;
+    -s | --shell)
+      if [[ $# -lt 2 ]]; then
+        echo "Missing value for $1" >&2
+        exit 2
+      fi
+      shell_command=$2
       shift 2
       ;;
     -h | --help)
@@ -61,8 +77,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ $# -eq 0 ]]; then
+if [[ -z "$shell_command" && $# -eq 0 ]]; then
   usage >&2
+  exit 2
+fi
+
+if [[ -n "$shell_command" && $# -gt 0 ]]; then
+  echo "--shell cannot be combined with a direct command invocation" >&2
   exit 2
 fi
 
@@ -84,9 +105,7 @@ fi
 shell_script=$(latest_shell_export)
 
 if [[ -z "$shell_script" ]]; then
-  # `devenv info` is enough to force materialization of `.devenv/` without
-  # actually entering the shell.
-  devenv --no-tui info >/dev/null
+  materialize_shell_export
   shell_script=$(latest_shell_export)
 fi
 
@@ -103,5 +122,11 @@ export PS1=""
 # skip formatter / hook setup triggered from shellHook / enterShell.
 # shellcheck disable=SC1090
 source <(awk '/^eval "\$\{shellHook:-\}"$/ { exit } { print }' "$shell_script")
+
+if [[ -n "$shell_command" ]]; then
+  # Shell mode is for builtins, pipes, and env expansion that cannot be `exec`'d
+  # directly the way the normal binary path can.
+  exec bash -lc "$shell_command"
+fi
 
 exec "$@"
