@@ -97,7 +97,7 @@ fi
 
 if bootstrap_script=$(find_poly_local_inputs_bootstrap "$repo_root"); then
   polyrepo_root=$(dirname "$(dirname "$(dirname "$bootstrap_script")")")
-  "$bootstrap_script" "$repo_root" --polyrepo-root "$polyrepo_root" --repo-dirs-path repos
+  "$bootstrap_script" "$repo_root" --polyrepo-root "$polyrepo_root"
 fi
 
 # Reuse the repo's generated shell export if it already exists. This avoids
